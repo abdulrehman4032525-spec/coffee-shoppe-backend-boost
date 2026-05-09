@@ -3,15 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTransactionalEmail } from "@/lib/email/send";
-
-async function assertAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase.rpc("has_role", {
-    _user_id: userId,
-    _role: "admin",
-  });
-  if (error) throw new Response("Role check failed", { status: 500 });
-  if (!data) throw new Response("Forbidden", { status: 403 });
-}
+import { assertAdmin } from "@/lib/admin.server";
 
 export const checkIsAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
