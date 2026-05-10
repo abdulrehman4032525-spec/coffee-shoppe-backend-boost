@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getClientIp, rateLimit, maybeSweep } from "@/lib/rate-limit";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,15 @@ export const Route = createFileRoute("/api/public/newsletter")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request }) => {
+        maybeSweep();
+        const ip = getClientIp(request);
+        const rl = rateLimit({ key: `news:${ip}`, limit: 10, windowMs: 60_000 });
+        if (!rl.ok) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "Too many requests" }),
+            { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.retryAfterSec), ...corsHeaders } }
+          );
+        }
         let body: unknown;
         try {
           body = await request.json();
